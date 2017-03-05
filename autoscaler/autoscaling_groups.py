@@ -19,8 +19,8 @@ class AutoScalingGroups(object):
     _BOTO_CLIENT_TYPE = 'autoscaling'
 
     _CLUSTER_KEY = 'KubernetesCluster'
-    _ROLE_KEYS = ('KubernetesRole', 'Role')
-    _WORKER_ROLE_VALUES = ('worker', 'kubernetes-minion')
+    _ROLE_KEYS = ('k8s.io/role/node',)
+    _WORKER_ROLE_VALUES = ('1',)
 
     def __init__(self, session, regions, cluster_name=None, asg_ids=None):
         """
