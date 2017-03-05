@@ -22,7 +22,7 @@ class AutoScalingGroups(object):
     _ROLE_KEYS = ('KubernetesRole', 'Role')
     _WORKER_ROLE_VALUES = ('worker', 'kubernetes-minion')
 
-    def __init__(self, session, regions, cluster_name=None):
+    def __init__(self, session, regions, cluster_name=None, asg_ids=None):
         """
         cluster_name - if set, filter ASGs by cluster_name in tag field
             _CLUSTER_KEY
@@ -30,6 +30,7 @@ class AutoScalingGroups(object):
         self.session = session
         self.regions = regions
         self.cluster_name = cluster_name
+        self.asg_ids = asg_ids
 
     def get_all_launch_configs(self, client, raw_groups):
         all_launch_configs = {}
@@ -68,12 +69,20 @@ class AutoScalingGroups(object):
                     if cluster_name != self.cluster_name or role not in self._WORKER_ROLE_VALUES:
                         continue
 
+                if self.asg_ids and raw_group['AutoScalingGroupName'] not in self.asg_ids:
+                    continue
+
                 groups.append(AutoScalingGroup(
                     client, region, kube_nodes, raw_group,
                     launch_configs[raw_group['LaunchConfigurationName']]))
 
         return groups
 
+    def get_all_nodes(self, groups):
+        nodes = []
+        for group in groups:
+            nodes.extend(group.get_nodes())
+        return nodes
 
 class AutoScalingTimeouts(object):
     _TIMEOUT = 3600  # 1 hour
@@ -334,6 +343,9 @@ class AutoScalingGroup(object):
             lambda n: n.unschedulable, self.nodes)
 
         self._id = (self.region, self.name)
+
+    def get_nodes(self):
+        return self.nodes
 
     def _extract_selectors(self, region, launch_config, tags_data):
         selectors = {

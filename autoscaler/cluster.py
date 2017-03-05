@@ -71,7 +71,7 @@ class Cluster(object):
         'm4.10xlarge': 0
     }
 
-    def __init__(self, regions, aws_access_key, aws_secret_key,
+    def __init__(self, regions, asg_ids, aws_access_key, aws_secret_key,
                  kubeconfig, idle_threshold, type_idle_threshold,
                  instance_init_time, cluster_name, notifier,
                  scale_up=True, maintainance=True,
@@ -95,12 +95,13 @@ class Cluster(object):
             region_name=regions[0])  # provide a default region
         self.autoscaling_groups = autoscaling_groups.AutoScalingGroups(
             session=self.session, regions=regions,
-            cluster_name=cluster_name)
+            cluster_name=cluster_name, asg_ids=asg_ids)
         self.autoscaling_timeouts = autoscaling_groups.AutoScalingTimeouts(
             self.session)
 
         # config
         self.regions = regions
+        self.asg_ids = asg_ids
         self.idle_threshold = idle_threshold
         self.instance_init_time = instance_init_time
         self.type_idle_threshold = type_idle_threshold
@@ -127,15 +128,17 @@ class Cluster(object):
         logger.info("++++++++++++++ Running Scaling Loop ++++++++++++++++")
         try:
             pykube_nodes = pykube.Node.objects(self.api)
+            #import pdb; pdb.set_trace()
             if not pykube_nodes:
                 logger.warn(
                     'Failed to list nodes. Please check kube configuration. Terminating scale loop.')
                 return False
 
             all_nodes = map(KubeNode, pykube_nodes)
-            managed_nodes = [node for node in all_nodes if node.is_managed()]
+            asgs = self.autoscaling_groups.get_all_groups(all_nodes)
 
-            running_insts_map = self.get_running_instances_map(managed_nodes)
+            # Limit the list of nodes to those running in our ASGs
+            all_nodes = self.autoscaling_groups.get_all_nodes(asgs)
 
             pods = map(KubePod, pykube.Pod.objects(self.api))
 
@@ -150,7 +153,12 @@ class Cluster(object):
                     if pod.node_name == node.name:
                         node.count_pod(pod)
 
-            asgs = self.autoscaling_groups.get_all_groups(all_nodes)
+
+            # Get instance_ids for asgs
+            # only work on nodes with those instanceids
+            # node.region, []).append(node.instance_id)
+            managed_nodes = [node for node in all_nodes if node.is_managed()]
+            running_insts_map = self.get_running_instances_map(managed_nodes)
 
             pods_to_schedule = self.get_pods_to_schedule(pods)
 

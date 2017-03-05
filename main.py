@@ -20,6 +20,7 @@ DEBUG_LOGGING_MAP = {
 @click.command()
 @click.option("--cluster-name")
 @click.option("--regions", default="us-west-1")
+@click.option("--asgs", multiple=True, default=None)
 @click.option("--sleep", default=60)
 @click.option("--kubeconfig", default=None,
               help='Full path to kubeconfig file. If not provided, '
@@ -45,7 +46,7 @@ DEBUG_LOGGING_MAP = {
                    "for more verbosity.",
               type=click.IntRange(0, 3, clamp=True),
               count=True)
-def main(cluster_name, regions, sleep, kubeconfig,
+def main(cluster_name, regions, asgs, sleep, kubeconfig,
          aws_access_key, aws_secret_key, datadog_api_key,
          idle_threshold, type_idle_threshold,
          over_provision, instance_init_time, no_scale, no_maintenance,
@@ -63,6 +64,7 @@ def main(cluster_name, regions, sleep, kubeconfig,
     cluster = Cluster(aws_access_key=aws_access_key,
                       aws_secret_key=aws_secret_key,
                       regions=regions.split(','),
+                      asg_ids=asgs,
                       kubeconfig=kubeconfig,
                       idle_threshold=idle_threshold,
                       instance_init_time=instance_init_time,
