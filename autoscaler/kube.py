@@ -5,6 +5,7 @@ import logging
 from dateutil.parser import parse as dateutil_parse
 import pykube.exceptions
 
+from autoscaler.config import Config
 import autoscaler.utils as utils
 
 logger = logging.getLogger(__name__)
@@ -21,7 +22,7 @@ _CORDON_LABEL = 'openai/cordoned-by-autoscaler'
 
 
 class KubePod(object):
-    _DRAIN_GRACE_PERIOD = datetime.timedelta(seconds=60*60)
+    _DRAIN_GRACE_PERIOD = datetime.timedelta(seconds=Config.DRAIN_GRACE_PERIOD_SECONDS)
 
     def __init__(self, pod):
         self.original = pod

@@ -13,6 +13,7 @@ import pykube
 import autoscaler.autoscaling_groups as autoscaling_groups
 import autoscaler.capacity as capacity
 from autoscaler.kube import KubePod, KubeNode, KubeResource, KubePodStatus
+from autoscaler.config import Config
 import autoscaler.utils as utils
 
 # we are interested in all pods, incl. system ones
@@ -49,11 +50,11 @@ class Cluster(object):
     # this is for keeping some spare capacity around for faster
     # pod scheduling, instead of keeping the cluster at capacity
     # and having to spin up nodes for every job submission
-    TYPE_IDLE_COUNT = 5
+    TYPE_IDLE_COUNT = Config.TYPE_IDLE_COUNT
 
     # the utilization threshold under which to consider a node
     # under utilized and drainable
-    UTIL_THRESHOLD = 0.3
+    UTIL_THRESHOLD = Config.UTILISATION_THRESHOLD
 
     # since we pay for the full hour, don't prematurely kill instances
     # the number of minutes into the launch hour at which an instance
@@ -128,7 +129,6 @@ class Cluster(object):
         logger.info("++++++++++++++ Running Scaling Loop ++++++++++++++++")
         try:
             pykube_nodes = pykube.Node.objects(self.api)
-            #import pdb; pdb.set_trace()
             if not pykube_nodes:
                 logger.warn(
                     'Failed to list nodes. Please check kube configuration. Terminating scale loop.')
@@ -418,8 +418,13 @@ class Cluster(object):
             else:
                 state = ClusterNodeState.BUSY
         elif pending_list and not node.unschedulable:
+            # TODO (shauno): This matched a pod that couldnt be
+            # scheduled due to CPU limits
+            # TODO (shauno): We also got multiple instance provisioned
+            # in the above case.. that's no good
             state = ClusterNodeState.POD_PENDING
-        elif launch_hour_offset < self.LAUNCH_HOUR_THRESHOLD and not node.unschedulable:
+
+        elif Config.ENABLED_GRACE_PERIODS['LAUNCH_HOUR_OFFSET'] and launch_hour_offset < self.LAUNCH_HOUR_THRESHOLD and not node.unschedulable:
             state = ClusterNodeState.LAUNCH_HR_GRACE_PERIOD
         elif (not type_spare_capacity and age <= self.idle_threshold) and not node.unschedulable:
             # there is already an instance of this type sitting idle
