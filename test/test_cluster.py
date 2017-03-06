@@ -65,6 +65,11 @@ class TestCluster(unittest.TestCase):
                     'Key': 'KubernetesRole',
                     'Value': 'worker',
                     'PropagateAtLaunch': True
+                },
+                {
+                    'Key': 'k8s.io/role/node',
+                    'Value': '1',
+                    'PropagateAtLaunch': True
                 }
             ]
         )
@@ -74,6 +79,7 @@ class TestCluster(unittest.TestCase):
             aws_access_key='',
             aws_secret_key='',
             regions=['us-west-2', 'us-east-1', 'us-west-1'],
+            asg_ids=None,
             kubeconfig='~/.kube/config',
             idle_threshold=60,
             instance_init_time=60,
